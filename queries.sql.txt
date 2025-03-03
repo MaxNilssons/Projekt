@@ -1,0 +1,271 @@
+--Som budgivare vill jag kunna se flera bilder av klockan som tillhör auktion 1 plus egenskaper
+--för att få en bättre uppfattning om dess utseende innan jag lägger bud.
+CREATE VIEW auktioner_med_bilder AS
+SELECT
+auktion.id AS auktions_nummer,klocka_id, märke,modell,färg,
+diameter,urverk,armband,bild,beskrivning
+FROM auktion
+JOIN clock.klockor k2 ON auktion.klocka_id = k2.id
+JOIN clock.bilder b ON k2.id = b.klock_id
+WHERE auktion.slut_datum >= CURRENT_DATE
+ORDER BY klocka_id asc;
+
+SELECT * FROM auktioner_med_bilder WHERE klocka_id = 1;
+
+--Som användare vill jag se kortfattat info om varje auktion
+CREATE VIEW kortfattad_auktionsinfo AS
+SELECT
+auktion.id AS auktionsnummer,
+start_datum,slut_datum,utgångspris,reservationspris
+FROM auktion
+ORDER BY slut_datum ASC;
+SELECT * from kortfattad_auktionsinfo;
+
+--Som användare vill jag kunna se vilket användarnamn som har högst bud
+-- på auktion 4 samt lite egenskaper klockan har
+CREATE VIEW auktioners_och_bud AS
+SELECT auktion.id AS auktions_nummer, användarnamn AS budgivare,
+bud_i_kr,bud_datum,märke,modell,färg,diameter,urverk from auktion
+JOIN clock.bud b on auktion.id = b.auktion_id
+JOIN clock.konto k on b.budgivare_id = k.id
+JOIN clock.klockor k2 on auktion.klocka_id = k2.id
+WHERE  bud_i_kr IS NOT NULL;
+SELECT * FROM auktioners_och_bud
+WHERE auktions_nummer = 4
+ORDER BY bud_i_kr DESC limit 1
+--Jag som användare vill se högsta bud / vinnande bud per auktion
+CREATE VIEW vinst_eller_högsta_bud AS
+SELECT
+auktion.id,märke,modell,
+budgivare_id,användarnamn AS vinnare,
+bud_i_kr AS vinnande_bud,slut_datum
+FROM auktion
+JOIN clock.klockor k ON k.id = auktion.klocka_id
+JOIN clock.bud bud ON auktion.id = bud.auktion_id
+JOIN konto ON bud.budgivare_id = konto.id
+WHERE
+bud_i_kr = (
+SELECT MAX(bud_i_kr)
+FROM bud
+WHERE auktion_id = auktion.id );
+SELECT * FROM vinst_eller_högsta_bud
+
+
+;
+-- Jag som användare Elendil vill se alla bud jag lagt på alla auktioner jag har varit delaktig i
+
+CREATE VIEW alla_bud AS
+SELECT användarnamn, bud_i_kr,a.id AS auktion_id,märke,modell,färg,diameter  from konto
+JOIN clock.bud b on konto.id = b.budgivare_id
+JOIN clock.auktion a on a.id = b.auktion_id
+JOIN clock.klockor k on k.id = a.klocka_id
+ORDER BY bud_i_kr DESC;
+
+SELECT * from alla_bud
+WHERE användarnamn ='Elendil';
+
+
+-- Jag med kontonamn Melkor vill se alla auktioner jag lagt upp.
+CREATE VIEW allas_auktioner AS
+SELECT konto.id AS konto_id,användarnamn,a.id AS auktion_id,start_datum,slut_datum,märke,modell,färg,diameter from konto
+JOIN clock.auktion a on konto.id = a.säljare_id
+JOIN clock.klockor k on k.id = a.klocka_id;
+
+SELECT * FROM allas_auktioner WHERE användarnamn = 'Melkor';
+
+
+--Jag med kontonamn Melkor vill kunna se mina pågående auktioner
+CREATE VIEW _aktiva_auktioner AS
+SELECT a.id,start_datum,slut_datum, användarnamn,märke,modell,färg,diameter FROM konto
+JOIN clock.auktion a on konto.id = a.säljare_id
+JOIN clock.klockor k on k.id = a.klocka_id
+WHERE slut_datum >'2024-10-09';
+SELECT * FROM _aktiva_auktioner WHERE användarnamn = 'Melkor';
+
+
+
+
+
+--Listor måste kunna filtreras (pågående, avslutade)
+--Nedan dataumbaserade queries övergripande
+--Jag som användare vill se alla auktioner som har startat eller startar idag.
+SELECT *
+FROM auktion
+WHERE start_datum <= CURRENT_DATE
+AND slut_datum >= CURRENT_DATE;
+
+SELECT *
+FROM auktion
+WHERE slut_datum < CURRENT_DATE;
+--Denna visar alla auktioner som har avslutats.
+
+SELECT * FROM auktion
+WHERE slut_datum BETWEEN '2024-10-14' AND '2024-10-31'
+;
+--Som användare vill jag kunna se alla bud som lagts på alla auktioner från 1/10 till 18/10
+SELECT * FROM bud
+WHERE bud_datum BETWEEN '2024-10-01' AND '2024-10-18';
+
+
+--Jag som budgivare vill se all budgivningshistorik på auktions id 1
+-- samt relevant information om klockans egenskaper. (Här kan jag lägga in limit 1 desc för att få högsta bud)
+CREATE VIEW All_budgivningshistorik AS
+SELECT
+auktion.id AS auktions_id,utgångspris,budgivare_id AS budgivare_id,budgivare_konto.användarnamn as budgivare,
+start_datum,slut_datum,bud_i_kr,bud_datum,
+märke,modell,färg,armband
+FROM auktion
+JOIN clock.konto säljare_konto ON säljare_konto.id = auktion.säljare_id
+JOIN clock.klockor k2 ON k2.id = auktion.klocka_id
+JOIN clock.bud b ON auktion.id = b.auktion_id
+JOIN clock.konto budgivare_konto ON budgivare_konto.id = b.budgivare_id
+ORDER BY bud_i_kr DESC;
+
+SELECT * FROM all_budgivningshistorik
+WHERE auktions_id = 1;
+
+
+
+--Som administratör så behöver jag ta bort konto med id 9 då personen vill bli borttagen från hemsidan.
+--Här upptäckte jag ON DELETE CASCADE begreppet. Inget jag hann implementera. Men förstår principen om att det då
+--raderar allt som konto id 9 är kopplat till (i mitt fall bland annat tabellerna email,telefon,adress..)
+DELETE from konto
+WHERE id= 9;
+DELETE from telefonnummer
+where id = 9;
+DELETE FROM email
+WHERE id = 9;
+DELETE FROM personuppgifter
+WHERE id = 9;
+--osv...
+-- Precis efter det som hände ovan så kommer en ny person och vill registrera sig på hemsidan
+INSERT INTO konto (id, användarnamn, lösenord, reg_datum, admin)
+VALUES (9, 'Ny_Användare', 'sdjfhskjdf', CURRENT_DATE, false);
+
+
+--Person med mail_id 5 ska kunna logga in på hemsidan.
+
+SELECT mail,mail_id,lösenord,
+CASE
+WHEN '"456fbdf4"' = lösenord
+AND 'lampa@gmail.com' = mail
+THEN 'Lyckad inloggning'
+ELSE 'Fel mail eller lösenord' END
+FROM konto
+join clock.email e on e.id = konto.mail_id
+WHERE mail_id = 5;
+
+--Administratör vill se en lista på alla auktioner som inte är pausade av administratör
+CREATE VIEW Alla_auktioner_som_inte_är_pausade AS
+SELECT * from auktion
+WHERE pausad = false;
+--Administratör vill se en lista på auktioner som har ett reserv.pris och som inte är pausad av admin
+CREATE VIEW reservpris_ej_pausad AS
+SELECT * FROM auktion
+WHERE reservationspris IS NOT NULL AND pausad is false;
+
+
+
+
+-- Som admin behöver jag ge användare Melkor
+-- ett tillfälligt lösenord för att han har glömt sitt.
+UPDATE konto
+SET lösenord = 'SlutaglömDITTlösenord123'
+WHERE användarnamn = 'Melkor';
+
+--Som Admin behöver jag kunna skicka ett meddelande till
+-- kontoägaren Melkor för att meddela att han kan skapa ett nytt lösenord
+
+INSERT INTO meddelanden (från_konto, till_konto, text, skickat_tid)
+VALUES( 8,1,
+       'Ditt lösenord är återställt, skapa ett nytt OMEDELBART',
+       CURRENT_TIMESTAMP);
+INSERT INTO meddelanden (från_konto, till_konto, text, skickat_tid)
+VALUES( 1,8,
+       'Tack för snabb hjälp!',
+       CURRENT_TIMESTAMP);
+
+--Användare Wraith behöver uppdatera slutdatum på  auktion 9
+--(Rent funktionsmässigt behövs nog inte säljare_id = 3 då auktionid är unikt
+-- och det finns bara en auktion med nummer 9)
+UPDATE auktion SET slut_datum = '2024-11-01'
+WHERE auktion.id = 9
+AND säljare_id = 3;
+
+-- Användare Wraith med email.id 3 har bytt mailadress och behöver därför uppdatera sin nuvarande.
+UPDATE email
+SET mail = 'Nymailadressförmig@gmail.com'
+WHERE id = 3;
+
+-- Som administratör vill jag lägga in en funktion som ser betalningsstatus "inhouse"
+--(Nedan kommer 3 exempel på hur admin uppdaterar dom olika ENUM alternativen)
+CREATE TYPE betalningsstatus AS ENUM ('betald', 'ej betald', 'väntar på betalning');
+
+UPDATE auktion
+SET betalningsstatus = 'ej betald'
+WHERE id = 4;
+UPDATE auktion
+SET betalningsstatus = 'betald'
+WHERE id = 2;
+UPDATE auktion
+SET betalningsstatus = 'väntar på betalning'
+WHERE id = 5;
+
+--Som admin vill jag kunna se en lista på alla som inte är admin
+--för att hantera användarna mer effektivt.
+CREATE VIEW alla_användare_ej_admin AS
+SELECT konto.id,användarnamn,förnamn,efternamn,admin FROM konto
+JOIN clock.personuppgifter p on p.id = konto.id
+WHERE admin = false;
+SELECT * from alla_användare_ej_admin;
+
+--Som administratör behöver jag koppla samman användarnamn med nödvändig kontaktinformation
+CREATE VIEW användare_info AS
+SELECT konto.id,användarnamn,förnamn,efternamn,telefonnummer,mail,gatunamn,gatunummer,ort,postnummer
+FROM konto
+JOIN clock.personuppgifter p on p.id = konto.id
+JOIN clock.telefonnummer t on p.id = t.personuppgifter_id
+JOIN clock.email e on e.id = konto.mail_id
+JOIN clock.adresser a on p.id = a.id
+WHERE admin = false;
+
+-- Som administratör vill jag få en överblick över vad varje konto innehåller
+
+CREATE VIEW användarprofil AS
+SELECT användarnamn, reg_datum, profilbild
+FROM konto;
+
+    ;
+--Som administratör  vill jag kunna pausa och kika över auktion med id 1 för att något är fel med den.
+
+UPDATE auktion
+SET pausad = TRUE
+WHERE id = 1;
+SELECT id, start_datum, slut_datum,
+CASE
+WHEN pausad = TRUE THEN 'Auktionen behöver kontrolleras'
+ELSE 'Auktionen är aktiv'
+END AS auktion_status
+FROM auktion
+WHERE id = 1;
+
+CREATE VIEW Auktion_kontroll_admin AS
+SELECT auktion.id AS auktions_id, start_datum, slut_datum,användarnamn AS säljare,
+CASE WHEN pausad = TRUE THEN 'Auktionen behöver kontrolleras'
+ELSE 'Auktionen är kontrollerad'
+END AS auktion_status_admin
+FROM auktion
+JOIN clock.konto k on k.id = auktion.säljare_id;
+SELECT * from auktion_kontroll_admin
+WHERE Auktions_id = 1;
+
+UPDATE auktion
+SET pausad = TRUE
+WHERE id = 1;
+SELECT id, start_datum, slut_datum,
+CASE
+WHEN pausad = TRUE THEN 'Auktionen behöver kontrolleras'
+ELSE 'Auktionen är aktiv'
+END AS auktion_status
+FROM auktion
+WHERE id = 1;

@@ -1,0 +1,22 @@
+
+När jag besöker hemsidan så vill jag kunna registrera mig & logga in som användare.
+Jag fyller i mina personliga uppgifter & i samma process får jag ett konto med ett självvalt användarnamn.
+Framöver så loggar jag in med hjälp av min mail samt ett  lösenord
+Under mitt konto vill jag kunna ha en profilbild och se vilket datum jag registrerade mig.
+Jag vill även kunna ta emot och skicka meddelanden till både säljare&köpare (användare) samt kunna kontakta/bli kontaktad av administratören vid behov.
+Jag vill kunna se alla auktioner som finns på hemsidan, och kunna sortera dessa baserat på olika saker; aktiva/tid/aktuellt bud
+Jag vill kunna göra likadant med bud. Sortera på högsta bud rent generellt, men även på en mer detaljrik nivå ( enskilda auktioner)
+
+
+
+
+
+
+
+
+Jag som administratör ska kunna agera på hemsidan med högre befogenheter än användare.
+Jag vill kunna sortera vilka som är användare på hemsidan, och kunna se vilka auktioner respektive bud dom har lagt.
+Jag vill kunna pausa en auktion vid behov, och jag måste kunna bistå användarna med den hjälp dom kan tänkas behövas.
+Till exempel så måste jag kunna skicka meddelanden till dom/hjälpa till att återställa lösenord.
+Jag vill kunna uppdatera olika auktioners betalningsstatus.
+
